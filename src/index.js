@@ -8,7 +8,7 @@ const glob = require('glob');
 
 (async () => {
   try {
-    // Fixed BaiduPCS-Go version
+    // Fixed BaiduPCS-Go version (latest release asset naming)
     const VERSION = '3.9.6';
 
     // Inputs from workflow
@@ -17,20 +17,30 @@ const glob = require('glob');
     const targetPattern = core.getInput('target', { required: true });
     const remoteDir = core.getInput('remote-dir', { required: true });
 
-    // Determine download URL based on OS platform
+    // Determine download URL based on OS platform/arch
     const platform = os.platform();
-    let downloadUrl;
+    const arch = os.arch();
+    let assetName;
     if (platform === 'win32') {
-      downloadUrl = `https://github.com/qjfoidnh/BaiduPCS-Go/releases/download/v${VERSION}/BaiduPCS-Go-v${VERSION}-windows-amd64.zip`;
+      // Windows variant: windows-x64 or windows-x86 or windows-arm
+      if (arch === 'x64') assetName = `BaiduPCS-Go-v${VERSION}-windows-x64.zip`;
+      else if (arch === 'arm64') assetName = `BaiduPCS-Go-v${VERSION}-windows-arm.zip`;
+      else assetName = `BaiduPCS-Go-v${VERSION}-windows-x86.zip`;
     } else if (platform === 'darwin') {
-      downloadUrl = `https://github.com/qjfoidnh/BaiduPCS-Go/releases/download/v${VERSION}/BaiduPCS-Go-v${VERSION}-darwin-amd64.zip`;
+      // macOS variants use darwin-osx prefix
+      if (arch === 'arm64') assetName = `BaiduPCS-Go-v${VERSION}-darwin-osx-arm64.zip`;
+      else assetName = `BaiduPCS-Go-v${VERSION}-darwin-osx-amd64.zip`;
     } else {
-      downloadUrl = `https://github.com/qjfoidnh/BaiduPCS-Go/releases/download/v${VERSION}/BaiduPCS-Go-v${VERSION}-linux-amd64.zip`;
+      // Linux variants
+      if (arch === 'arm64') assetName = `BaiduPCS-Go-v${VERSION}-linux-arm64.zip`;
+      else if (arch === 'arm') assetName = `BaiduPCS-Go-v${VERSION}-linux-arm.zip`;
+      else assetName = `BaiduPCS-Go-v${VERSION}-linux-amd64.zip`;
     }
 
+    const downloadUrl = `https://github.com/qjfoidnh/BaiduPCS-Go/releases/download/v${VERSION}/${assetName}`;
+
     // Download the specified ZIP archive
-    const zipName = path.basename(downloadUrl);
-    const zipPath = path.join(process.cwd(), zipName);
+    const zipPath = path.join(process.cwd(), assetName);
     core.info(`Downloading BaiduPCS-Go from: ${downloadUrl}`);
     await exec.exec('curl', ['-L', '-o', zipPath, downloadUrl]);
 
@@ -44,11 +54,9 @@ const glob = require('glob');
 
     // Locate the executable and ensure it is executable
     const files = fs.readdirSync(extractDir);
-    let exeFile = files.find(f => f.toLowerCase().startsWith('baidupcs-go'));
+    let exeFile = files.find(f => f.toLowerCase().includes('baidupcs-go'));
     let exePath = path.join(extractDir, exeFile);
-    if (platform === 'win32' && !exePath.endsWith('.exe')) {
-      exePath += '.exe';
-    }
+    if (!exePath.endsWith('.exe') && platform === 'win32') exePath += '.exe';
     fs.chmodSync(exePath, 0o755);
 
     // Log in to Baidu Cloud Disk
@@ -57,9 +65,7 @@ const glob = require('glob');
 
     // Find files matching the target pattern
     const matches = glob.sync(targetPattern, { nodir: true });
-    if (matches.length === 0) {
-      throw new Error(`No files matched pattern: ${targetPattern}`);
-    }
+    if (matches.length === 0) throw new Error(`No files matched pattern: ${targetPattern}`);
 
     // Upload each matched file
     for (const filePath of matches) {
