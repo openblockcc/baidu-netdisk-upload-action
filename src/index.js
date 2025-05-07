@@ -48,7 +48,11 @@ const glob = require('glob');
 
         // Locate the executable recursively in extractDir
         const exePattern = platform === 'win32' ? '**/BaiduPCS-Go.exe' : '**/BaiduPCS-Go';
-        const executables = glob.sync(path.join(extractDir, exePattern), {nocase: true});
+        const executables = glob.sync(exePattern, {
+            cwd: extractDir,
+            absolute: true,
+            nocase: true
+        });
         if (executables.length === 0) {
             throw new Error(`Executable not found in path: ${extractDir}`);
         }
