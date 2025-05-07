@@ -1,0 +1,20 @@
+name: "Baidu Netdisk Upload"
+description: "se BaiduPCS-Go to upload files to Baidu Netdisk"
+author: "Arthur Zheng <arthurzheng150@gmail.com>"
+runs:
+  using: "node16"
+  main: "index.js"
+inputs:
+  bduss:
+    description: "BDUSS token for Baidu Cloud Disk authentication"
+    required: true
+  stoken:
+    description: "STOKEN for Baidu Cloud Disk authentication"
+    required: true
+  target:
+    description: "Local file or directory pattern to upload (supports glob syntax)"
+    required: true
+  remote-dir:
+    description: "Target directory path on Baidu Cloud Disk"
+    required: true
+outputs: {}

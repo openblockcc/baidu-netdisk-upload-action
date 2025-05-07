@@ -1,0 +1,21 @@
+{
+  "name": "baidu-netdisk-upload-action",
+  "version": "1.0.0",
+  "description": "Github action to upload files to Baidu Netdisk using BaiduPCS-Go",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint . --ext .js,.jsx --fix",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "ArthurZheng",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/exec": "^1.1.1",
+    "unzipper": "^0.12.3"
+  },
+  "devDependencies": {
+    "eslint": "^9.26.0",
+    "eslint-config-scratch": "^11.0.1"
+  }
+}
