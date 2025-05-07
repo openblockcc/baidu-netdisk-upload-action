@@ -22,21 +22,17 @@ const glob = require('glob');
     const arch = os.arch();
     let assetName;
     if (platform === 'win32') {
-      // Windows variant: windows-x64 or windows-x86 or windows-arm
       if (arch === 'x64') assetName = `BaiduPCS-Go-v${VERSION}-windows-x64.zip`;
       else if (arch === 'arm64') assetName = `BaiduPCS-Go-v${VERSION}-windows-arm.zip`;
       else assetName = `BaiduPCS-Go-v${VERSION}-windows-x86.zip`;
     } else if (platform === 'darwin') {
-      // macOS variants use darwin-osx prefix
       if (arch === 'arm64') assetName = `BaiduPCS-Go-v${VERSION}-darwin-osx-arm64.zip`;
       else assetName = `BaiduPCS-Go-v${VERSION}-darwin-osx-amd64.zip`;
     } else {
-      // Linux variants
       if (arch === 'arm64') assetName = `BaiduPCS-Go-v${VERSION}-linux-arm64.zip`;
       else if (arch === 'arm') assetName = `BaiduPCS-Go-v${VERSION}-linux-arm.zip`;
       else assetName = `BaiduPCS-Go-v${VERSION}-linux-amd64.zip`;
     }
-
     const downloadUrl = `https://github.com/qjfoidnh/BaiduPCS-Go/releases/download/v${VERSION}/${assetName}`;
 
     // Download the specified ZIP archive
@@ -52,11 +48,13 @@ const glob = require('glob');
       .pipe(unzipper.Extract({ path: extractDir }))
       .promise();
 
-    // Locate the executable and ensure it is executable
-    const files = fs.readdirSync(extractDir);
-    let exeFile = files.find(f => f.toLowerCase().includes('baidupcs-go'));
-    let exePath = path.join(extractDir, exeFile);
-    if (!exePath.endsWith('.exe') && platform === 'win32') exePath += '.exe';
+    // Locate the executable recursively in extractDir
+    const exePattern = platform === 'win32' ? '**/BaiduPCS-Go.exe' : '**/BaiduPCS-Go';
+    const executables = glob.sync(path.join(extractDir, exePattern), { nocase: true });
+    if (executables.length === 0) {
+      throw new Error(`Executable not found in path: ${extractDir}`);
+    }
+    const exePath = executables[0];
     fs.chmodSync(exePath, 0o755);
 
     // Log in to Baidu Cloud Disk
