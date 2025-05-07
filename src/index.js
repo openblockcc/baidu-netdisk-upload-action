@@ -8,16 +8,13 @@ const glob = require('glob');
 
 (async () => {
     try {
-    // Fixed BaiduPCS-Go version (latest release asset naming)
         const VERSION = '3.9.6';
 
-        // Inputs from workflow
-        const bduss = core.getInput('bduss', {required: true});
-        const stoken = core.getInput('stoken', {required: true});
-        const targetPattern = core.getInput('target', {required: true});
-        const remoteDir = core.getInput('remote-dir', {required: true});
+        const bduss = core.getInput('bduss', { required: true });
+        const stoken = core.getInput('stoken', { required: true });
+        const targetPattern = core.getInput('target', { required: true });
+        const remoteDir = core.getInput('remote-dir', { required: true });
 
-        // Determine download URL based on OS platform/arch
         const platform = os.platform();
         const arch = os.arch();
         let assetName;
@@ -33,47 +30,64 @@ const glob = require('glob');
         else assetName = `BaiduPCS-Go-v${VERSION}-linux-amd64.zip`;
         const downloadUrl = `https://github.com/qjfoidnh/BaiduPCS-Go/releases/download/v${VERSION}/${assetName}`;
 
-        // Download the specified ZIP archive
         const zipPath = path.join(process.cwd(), assetName);
-        core.info(`Downloading BaiduPCS-Go from: ${downloadUrl}`);
+        core.info(`📥 Downloading BaiduPCS-Go from: ${downloadUrl}`);
         await exec.exec('curl', ['-L', '-o', zipPath, downloadUrl]);
 
-        // Extract the archive using unzipper
+        if (!fs.existsSync(zipPath)) {
+            throw new Error(`❌ ZIP file was not downloaded: ${zipPath}`);
+        } else {
+            core.info(`✅ ZIP file exists: ${zipPath}`);
+        }
+
         const extractDir = path.join(process.cwd(), 'baidupcs');
-        fs.mkdirSync(extractDir, {recursive: true});
-        core.info('Extracting archive using unzipper');
+        fs.mkdirSync(extractDir, { recursive: true });
+        core.info('📦 Extracting archive...');
         await fs.createReadStream(zipPath)
-            .pipe(unzipper.Extract({path: extractDir}))
+            .pipe(unzipper.Extract({ path: extractDir }))
             .promise();
 
-        // Locate the executable recursively in extractDir
+        core.info(`📁 Extracted contents to: ${extractDir}`);
+        const allFiles = glob.sync('**/*', { cwd: extractDir });
+        core.info(`📋 Files after extraction:\n${allFiles.join('\n')}`);
+
         const exePattern = platform === 'win32' ? '**/BaiduPCS-Go.exe' : '**/BaiduPCS-Go';
         const executables = glob.sync(exePattern, {
             cwd: extractDir,
             absolute: true,
             nocase: true
         });
+
         if (executables.length === 0) {
-            throw new Error(`Executable not found in path: ${extractDir}`);
+            throw new Error(`❌ Executable not found using pattern: ${exePattern}`);
         }
         const exePath = executables[0];
-        fs.chmodSync(exePath, 0o755);
+        core.info(`✅ Found executable: ${exePath}`);
 
-        // Log in to Baidu Cloud Disk
-        core.info('Logging in to Baidu Cloud Disk');
+        try {
+            fs.chmodSync(exePath, 0o755);
+            core.info('🔐 Executable permission set to 755');
+        } catch (chmodErr) {
+            core.warning(`⚠️ chmod failed: ${chmodErr.message}`);
+        }
+
+        // Check if executable actually exists before running
+        if (!fs.existsSync(exePath)) {
+            throw new Error(`❌ Executable path does not exist: ${exePath}`);
+        }
+
+        core.info('🔐 Logging into Baidu Cloud Disk...');
         await exec.exec(exePath, ['login', `-bduss=${bduss}`, `-stoken=${stoken}`]);
 
-        // Find files matching the target pattern
-        const matches = glob.sync(targetPattern, {nodir: true});
-        if (matches.length === 0) throw new Error(`No files matched pattern: ${targetPattern}`);
+        const matches = glob.sync(targetPattern, { nodir: true });
+        if (matches.length === 0) throw new Error(`❌ No files matched pattern: ${targetPattern}`);
 
-        // Upload each matched file
         for (const filePath of matches) {
-            core.info(`Uploading file: ${filePath}`);
+            core.info(`📤 Uploading file: ${filePath}`);
             await exec.exec(exePath, ['upload', filePath, remoteDir]);
         }
 
     } catch (error) {
-        core.setFailed(error.message);
+        core.setFailed(`🚨 ${error.message}`);
     }
 })();
