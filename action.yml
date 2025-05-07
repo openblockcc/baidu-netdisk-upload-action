@@ -3,7 +3,7 @@ description: "se BaiduPCS-Go to upload files to Baidu Netdisk"
 author: "Arthur Zheng <arthurzheng150@gmail.com>"
 runs:
   using: "node16"
-  main: "index.js"
+  main: "dist/index.js"
 inputs:
   bduss:
     description: "BDUSS token for Baidu Cloud Disk authentication"
